@@ -1,0 +1,29 @@
+{
+  "name": "album",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "exif-parser": "^0.1.9",
+    "express": "^4.16.3",
+    "fs-extra": "^0.30.0",
+    "graceful-fs": "^4.1.4",
+    "hash-file": "^3.0.0",
+    "image-size": "^0.5.4",
+    "jsonfile": "^3.0.0",
+    "lodash": "^4.13.1",
+    "moment": "^2.22.1",
+    "mongoose": "^5.0.16",
+    "path": "^0.12.7",
+    "readline-sync": "^1.4.9",
+    "socket.io": "^2.1.0",
+    "winston": "^2.4.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
