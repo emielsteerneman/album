@@ -1,0 +1,7 @@
+.ihActive {
+    border: 5px solid orange;
+}
+
+.ihInactive {
+    border: 5px solid white;
+}

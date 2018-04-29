@@ -20,7 +20,7 @@ Vue.component('datepicker-range', {
 });
 
 Vue.component('datepicker', {
-    props : ['currentDate'],
+    props : ['currentDate', 'locked'],
     data() {
         return {
             level : "days"
@@ -37,7 +37,7 @@ Vue.component('datepicker', {
             this.$forceUpdate();
         },
         dayClicked(day){
-            this.emitDate(this.currentDate.date(day));
+            this.emitDate(this.currentDate.date(day));S
             this.$forceUpdate();
         },
 
@@ -74,6 +74,9 @@ Vue.component('datepicker', {
 
         keyEvent(evt){
 
+            if(this.locked)
+                return;
+
             switch(evt.key){
                 case "A":
                     this.subtract();
@@ -89,7 +92,6 @@ Vue.component('datepicker', {
                     break;
 
             }
-
         }
     },
 
@@ -101,7 +103,7 @@ Vue.component('datepicker', {
     },
 
     template : `
-        <div>
+        <div :class="{borderTopEnabled : !locked, borderTopDisabled : locked}">
             <datepicker-range class="orange" :activeLevel="isActiveLevel('years')"  :from=2000 :to=2020 :active="currentDate.year()"  v-on:click="yearClicked"  ></datepicker-range>
             <datepicker-range class="blue"   :activeLevel="isActiveLevel('months')" :from=1 :to=12      :active="currentDate.month()+1" v-on:click="monthClicked" ></datepicker-range>
             <datepicker-range class="orange" :activeLevel="isActiveLevel('days')"   :from=1 :to=31      :active="currentDate.date()"  v-on:click="dayClicked"   ></datepicker-range>

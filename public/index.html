@@ -17,6 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.1/moment.min.js"></script>
 
     <link rel="stylesheet" href="datepicker.css" />
+    <link rel="stylesheet" href="itemhandler.css" />
 
 </head>
 <body>
@@ -25,21 +26,11 @@
 
         <br>
 
-        <datepicker :current-date="currentDate" v-on:date-selected="setDate"></datepicker>
+        <datepicker :locked="locked" :current-date="currentDate" v-on:date-selected="setDate"></datepicker>
 
         <br><br>
 
-        <div v-if="currentDate">
-            <h1> {{ currentDateStr }} - {{ findNumFiles() }} </h1>
-
-            <div class="row">
-                <div class="col-md-3" v-for="item in mediaItems" style="border: 1px solid orange" >
-                    <a :href="`album/${item.relativeDir}/${item.filename}`" target="_blank">
-                        <img class="img-fluid" :src="`album/${item.relativeDir}/${item.filename}`" />
-                    </a>
-                </div>
-            </div>
-        </div>
+        <itemhandler :media-items="mediaItems"></itemhandler>
 
         <div @click="setDateFromString(dirs[0])" v-for="dirs in tree" style="padding: 10px; border: 1px solid black; display: inline-block;">
             {{ dirs[0] }} - {{ dirs[1]}}
@@ -48,6 +39,7 @@
     </div>
 
     <script src="DatePicker.js"></script>
+    <script src="ItemHandler.js"></script>
 
     <script>
 
@@ -60,6 +52,7 @@
                 currentDate : moment(),
                 currentDateStr : null,
                 mediaItems : [],
+                locked : false,
             },
             methods : {
                 setTree : function(tree){
@@ -75,7 +68,6 @@
                 },
 
                 setDate: function(date){
-                    l("Setting new date : " + date);
                     if(date !== "unknown") {
                         this.currentDate = date;
                         this.currentDateStr = this.currentDate.format("YYYY/MM/DD");
@@ -83,9 +75,10 @@
                         this.currentDateStr = date
                     }
 
-                    l("currentDateStr: " + this.currentDateStr);
+                    this.locked = true;
                     this.$http.get("/get/" + this.currentDateStr).then((res, err) => {
                         this.mediaItems = res.body
+                        this.locked = false;
                     })
                 },
 
@@ -93,13 +86,6 @@
                     let obj = _.find(this.tree, t => t[0] == this.currentDateStr);
                     return obj ? obj[1] : 0;
                 },
-
-                keyEvent(evt){
-                }
-            },
-
-            created: function () {
-                window.addEventListener('keyup', this.keyEvent)
             },
 
             mounted : function(){

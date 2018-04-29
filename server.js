@@ -59,8 +59,6 @@ if(false) {
     l("Not doing that stuff!")
 }
 
-// return;
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true

@@ -21,3 +21,11 @@
 .day.active {
     background-color: deepskyblue;
 }
+
+.borderTopEnabled {
+    border-top: 5px solid greenyellow;
+}
+
+.borderTopDisabled {
+    border-top: 5px solid red;
+}
