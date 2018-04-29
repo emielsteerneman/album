@@ -55,6 +55,8 @@ if(false) {
             promises.push(album.addFile(args.filepath));
         },
     });
+}else{
+    l("Not doing that stuff!")
 }
 
 // return;
@@ -67,7 +69,23 @@ app.use(bodyParser.urlencoded({
 app.use('/album', express.static(albumPath));
 app.use('/', express.static(p.join(__dirname, 'public')));
 
+app.use('/get/:year/:month/:day', function(req, res, next){
+    album.getYMD(req.params.year, req.params.month, req.params.day).then(items => {
+        res.send(items);
+    }).catch(err => {
+        l(err);
+        res.send(null);
+    })
+});
 
+app.use('/get/unknown', function(req, res, next){
+    album.getByRelativeDir('unknown').then(items => {
+        res.send(items)
+    }).catch(err => {
+        l(err);
+        res.send(null);
+    })
+})
 
 
 
@@ -85,7 +103,6 @@ Promise.all(_.map(promises, p => p.reflect())).then( () => {
 
     album.treeDirDatabase().then(tree => {
         TREE = tree;
-        l(tree)
 
         http.listen(3000, function(){
             console.log("Server listening");

@@ -11,6 +11,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.16/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue-resource/1.5.0/vue-resource.min.js" integrity="sha256-SKdOGI9oIPdHcwjFQg+eCwBdIWFjxiNhWFlU9Gt0o18=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.slim.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.1/moment.min.js"></script>
@@ -24,18 +25,24 @@
 
         <br>
 
-        <datepicker v-on:date-selected="setDate"></datepicker>
+        <datepicker :current-date="currentDate" v-on:date-selected="setDate"></datepicker>
 
         <br><br>
 
-        <div v-if="date">
-            <h1> {{ date }} - {{ findNumFiles() }} </h1>
+        <div v-if="currentDate">
+            <h1> {{ currentDateStr }} - {{ findNumFiles() }} </h1>
+
+            <div class="row">
+                <div class="col-md-3" v-for="item in mediaItems" style="border: 1px solid orange" >
+                    <a :href="`album/${item.relativeDir}/${item.filename}`" target="_blank">
+                        <img class="img-fluid" :src="`album/${item.relativeDir}/${item.filename}`" />
+                    </a>
+                </div>
+            </div>
         </div>
 
-        <div v-for="dirs in tree">
-            <div style="border: 1px solid black;">
-                {{ dirs[0] }} - {{ dirs[1]}}
-            </div>
+        <div @click="setDateFromString(dirs[0])" v-for="dirs in tree" style="padding: 10px; border: 1px solid black; display: inline-block;">
+            {{ dirs[0] }} - {{ dirs[1]}}
         </div>
 
     </div>
@@ -50,46 +57,62 @@
 
             data : {
                 tree : {},
-                date : null,
-                dateKey : null,
+                currentDate : moment(),
+                currentDateStr : null,
+                mediaItems : [],
             },
             methods : {
                 setTree : function(tree){
-                    l("Sorting tree:");
                     let keys = Object.keys(tree);
                     keys = _.sortBy(keys);
-                    l(keys)
-
                     let treeSorted = _.map(keys, k => [k, tree[k]]);
-
-                    l("Setting tree: ");
                     this.tree = treeSorted;
+                },
+
+                setDateFromString(dateStr){
+                    if(dateStr === "unknown") this.setDate(dateStr);
+                    else                      this.setDate(moment(dateStr, "YYYY/MM/DD"))
                 },
 
                 setDate: function(date){
                     l("Setting new date : " + date);
-                    this.date = date.format("YYYY/MM/DD");
+                    if(date !== "unknown") {
+                        this.currentDate = date;
+                        this.currentDateStr = this.currentDate.format("YYYY/MM/DD");
+                    }else{
+                        this.currentDateStr = date
+                    }
+
+                    l("currentDateStr: " + this.currentDateStr);
+                    this.$http.get("/get/" + this.currentDateStr).then((res, err) => {
+                        this.mediaItems = res.body
+                    })
                 },
 
                 findNumFiles() {
-                    let obj = _.find(this.tree, t => t[0] == this.date);
-
+                    let obj = _.find(this.tree, t => t[0] == this.currentDateStr);
                     return obj ? obj[1] : 0;
+                },
+
+                keyEvent(evt){
                 }
+            },
+
+            created: function () {
+                window.addEventListener('keyup', this.keyEvent)
             },
 
             mounted : function(){
                 l("App mounted!");
+                this.setDate(moment());
             }
-        })
+        });
 
         let socket = io();
         socket.on('tree', tree => {
             l("Tree received");
             app.setTree(tree);
         })
-
-
 
     </script>
 

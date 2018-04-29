@@ -152,6 +152,22 @@ class Album {
         })
     }
 
+    getByRelativeDir(relativeDir){
+        return new Promise((resolve, reject) => {
+            model.MediaItem.find({relativeDir}, (err, items) => {
+                if(err){
+                    return reject(err);
+                }else{
+                    return resolve(items)
+                }
+            })
+
+        })
+    }
+
+    getYMD(year, month, day){
+        return this.getByRelativeDir(`${year}/${month}/${day}`);
+    }
 
 }
 
