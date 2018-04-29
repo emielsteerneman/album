@@ -3,6 +3,7 @@ l = console.log;
 const express 	= require('express');
 const p 		= require('path');
 const app 		= express();
+const http      = require('http').Server(app);
 const bodyParser= require('body-parser');
 
 const os 		= require("os");
@@ -15,12 +16,12 @@ const imageSize = require('image-size');
 const crypto 	= require('crypto');
 const Promise 	= require("bluebird");
 
-let io = require('socket.io')();
+const io        = require('socket.io')(http);
 
-let toolbox = require('./toolbox');
-let misc = require('./misc');
-const Album = require("./Album");
-const model = require('./Model');
+let toolbox     = require('./toolbox');
+let misc        = require('./misc');
+const Album     = require("./Album");
+const model     = require('./Model');
 
 drive = (os.platform() === "win32") ? process.cwd().split(p.sep)[0] : __dirname.split(p.sep).slice(0, -1).join(p.sep)
 albumPath = p.join(drive, 'albumClass');
@@ -33,143 +34,65 @@ l('album: ' + albumPath);
 configFile = './config.json';
 config = require(configFile);
 
-
+// Init album
 let album = new Album({
-	dir : albumPath
-});
-
-// model.MediaItem.remove({}, () => {});
-// return;
-
-let nFiles = 0;
-toolbox.traverse({
-    path : p.join(drive, "albumPhoneTest", "media"),
-    onFile : args => {
-
-        if(nFiles > 10)
-        	return true;
-
-        nFiles++;
-
-        // l(args.filepath);
-
-        album.addFile(args.filepath);
-
-        return;
-    },
+	dir : albumPath,
+    config
 });
 
 
-return;
+// model.MediaItem.remove({}, () => l("Items removed")); return;
+model.MediaItem.find((err, items) => l("Items : " + items.length));
 
-// Load index
-indexFile = p.join(albumPath, 'index.json');
-try{
-	index = require(indexFile);
-	l("Index file loaded");
-}catch(e){
-	l("Error! No index file");
-	// process.exit(1);
-	index = {};
-	// index = toolbox.indexFiles(albumPath)
+let promises = [];
+
+if(false) {
+    let nFiles = 0;
+    toolbox.traverse({
+        path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
+        onFile: args => {
+            if (++nFiles > 1000) return true;
+            promises.push(album.addFile(args.filepath));
+        },
+    });
 }
-if(typeof index === "undefined")
-	throw new Error("No index file!");
-
-model.init();
-
-model.MediaItem.remove({}, () => {});
-model.MediaItem.find((err, items) => {
-	l("Items : " + items.length);
-	_.each(items, item => l(item.id));
-});
 
 // return;
-
-nFiles = 0;
-toolbox.traverse({
-	path : p.join(drive, "albumPhoneTest", "media"),
-	onFile : args => {
-
-		// if(nFiles > 10)
-		// 	return true;
-		nFiles++;
-
-        let info = toolbox.mergeFileIntoAlbum(args);
-
-        if(typeof info === "undefined") {
-            l("Info undefined!");
-            l(JSON.stringify(args, null, 4));
-        	process.exit(-1);
-        }
-
-
-		let exists = false;
-        model.MediaItem.findOne({ id : info.id }, function(err, obj){
-
-        	nFiles++;
-
-        	l("\n");
-            console.log(nFiles, args.relativePath);
-            console.log(info.id, info.relativeDir + "/" + info.filename);
-
-            if(err) {
-                l(err);
-            	return;
-            }
-
-			if(obj){
-				l("Object already exists");
-				l("\t" + obj.relativeDir + "/" + obj.filename)
-				return;
-			}
-
-			l("obj doesn't exist");
-
-            let item = new model.MediaItem({
-                id : info.id,
-                filename : info.filename,
-                relativeDir : info.relativeDir,
-                source : info.source,
-                deleted : false,
-                favourited : false
-            });
-            item.save();
-
-        });
-
-
-
-	},
-});
-
-l("Done");
-return;
-
-
-
-
-
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
-  extended: true
+    extended: true
 }));
 
-app.use('/album', express.static(albumPath))
-app.use('/', express.static(p.join(__dirname, 'web')))
+app.use('/album', express.static(albumPath));
+app.use('/', express.static(p.join(__dirname, 'public')));
 
 
 
 
 
 
+
+let TREE = {};
 
 io.on('connection', function(client){
-	l("New SocketIO connection")
+	l("New SocketIO connection");
+    client.emit('tree', TREE);
 });
 
-app.listen(3000, function(){
-	console.log("Server listening")
-	io.listen(3000);
-})
+Promise.all(_.map(promises, p => p.reflect())).then( () => {
+    l("All promises completed");
+
+    album.treeDirDatabase().then(tree => {
+        TREE = tree;
+        l(tree)
+
+        http.listen(3000, function(){
+            console.log("Server listening");
+        });
+
+    });
+
+}).catch(err => {
+    l("error! : "  + err);
+});

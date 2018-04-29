@@ -400,5 +400,7 @@
     ".download",
     ".bnu--en",
     ".sf--en"
-  ]
+  ],
+  "minSize" : 100000,
+  "maxSize" : 10000000
 }

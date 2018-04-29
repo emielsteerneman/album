@@ -59,6 +59,7 @@ function traverse({
 			
 			let shouldBreak = onEnterDir({
 				  path : filepath
+				, relativeDir : p.join(relativePath, filename)
 				, depth
 				, dir : filename
 			})
@@ -88,7 +89,7 @@ function traverse({
 
 		let shouldBreak = onFile({
 			  path
-			, relativePath
+			, relativeDir : relativePath
 			, depth
 			, filename
 			, filepath
@@ -354,7 +355,8 @@ function getFileInfo(filepath){
 	return {
 		id,
 		filename,
-		relativeDir
+		relativeDir,
+		filestat
 	}
 }
 

@@ -1,0 +1,23 @@
+.rangeHolder {
+    display: table;
+    border-collapse: collapse;
+    width: 100%;
+    border-bottom: 1px solid deepskyblue;
+}
+
+.day{
+    display : table-cell;
+    padding : 10px;
+    cursor : pointer;
+}
+
+.orange {
+    background-color: #ffd300;
+}
+.blue {
+    background-color: #94d6ff;
+}
+
+.day.active {
+    background-color: deepskyblue;
+}

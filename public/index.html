@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Album</title>
+
+    <!-- BOOTSTRAP -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.16/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.slim.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.1/moment.min.js"></script>
+
+    <link rel="stylesheet" href="datepicker.css" />
+
+</head>
+<body>
+
+    <div id="app" class="container-fluid">
+
+        <br>
+
+        <datepicker v-on:date-selected="setDate"></datepicker>
+
+        <br><br>
+
+        <div v-if="date">
+            <h1> {{ date }} - {{ findNumFiles() }} </h1>
+        </div>
+
+        <div v-for="dirs in tree">
+            <div style="border: 1px solid black;">
+                {{ dirs[0] }} - {{ dirs[1]}}
+            </div>
+        </div>
+
+    </div>
+
+    <script src="DatePicker.js"></script>
+
+    <script>
+
+
+        let app = new Vue({
+            el : "#app",
+
+            data : {
+                tree : {},
+                date : null,
+                dateKey : null,
+            },
+            methods : {
+                setTree : function(tree){
+                    l("Sorting tree:");
+                    let keys = Object.keys(tree);
+                    keys = _.sortBy(keys);
+                    l(keys)
+
+                    let treeSorted = _.map(keys, k => [k, tree[k]]);
+
+                    l("Setting tree: ");
+                    this.tree = treeSorted;
+                },
+
+                setDate: function(date){
+                    l("Setting new date : " + date);
+                    this.date = date.format("YYYY/MM/DD");
+                },
+
+                findNumFiles() {
+                    let obj = _.find(this.tree, t => t[0] == this.date);
+
+                    return obj ? obj[1] : 0;
+                }
+            },
+
+            mounted : function(){
+                l("App mounted!");
+            }
+        })
+
+        let socket = io();
+        socket.on('tree', tree => {
+            l("Tree received");
+            app.setTree(tree);
+        })
+
+
+
+    </script>
+
+</body>
+</html>
+
