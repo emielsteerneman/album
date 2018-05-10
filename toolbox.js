@@ -454,7 +454,7 @@ function checkExtension({filename}){
 function getIdFromFilepath({filepath, filestat}){
 	let hash = hashFile.sync(filepath);
 
-	let f = filestat => filestat.size + "_" + hash;
+	let f = filestat => hash;
 
 	if(filestat)
 		return f(filestat);
