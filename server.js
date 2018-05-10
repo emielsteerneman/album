@@ -47,7 +47,7 @@ let files = [];
 toolbox.traverse({
 	path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
 	onFile : function(file){
-		if(files.length >= 50)
+		if(files.length >= 5000)
 			return true;
 
 		let size = file.filestat.size;
@@ -68,31 +68,50 @@ cpProm = (from, to) => {
 }
 
 // ==== Create promises
-let promises = [];
-_.each(files, file => {
-	let fileId = toolbox.getIdFromFilepath(file);
-	let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
-	let newFilepath = p.join(newDir, file.filename);
+// l("Creating promises..");
+// let promises = [];
+// _.each(files, file => {
+// 	let fileId = toolbox.getIdFromFilepath(file);
+// 	let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
+// 	let newFilepath = p.join(newDir, file.filename);
 	
-	let prom = cpProm(file.filepath, newFilepath);
-	promises.push(prom);
-});
+// 	let prom = cpProm(file.filepath, newFilepath);
+// 	promises.push(prom);
 
+// 	if(promises.length % 100 == 0){
+// 		l("#promises : " + promises.length);
+// 	}
+// });
+// l("#promises : " + promises.length);
 
-const batchSize = 10;
+// Solving promises in batches
+const batchSize = 100;
 let batchAt = 0;
+let totalSize = 0;
 
 (function runBatch(){
-	l(`Running batch [${batchAt}, ${_.min([promises.length, batchAt+batchSize])}]`);
+	l(`Running batch [${batchAt}, ${_.min([files.length, batchAt+batchSize])}].. Transferred : ${(totalSize/GB).toFixed(2)} GB`);
 	
-	let promiseBatch = promises.slice(batchAt, batchAt+batchSize);
-
-
-	batchAt += batchSize;
-	if(batchAt < promises.length){
-		setTimeout(runBatch, 200);
-	}
-
+	let promisesBatch = [];
+	// Get files for batch
+	let filesBatch = files.slice(batchAt, batchAt+batchSize);
+	// Generate promises
+	_.each(filesBatch, file => {
+		let fileId = toolbox.getIdFromFilepath(file);
+		let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
+		let newFilepath = p.join(newDir, file.filename);
+		
+		let prom = cpProm(file.filepath, newFilepath);
+		promisesBatch.push(prom);
+	})
+	// Resolve promises
+	Promise.all(_.map(promisesBatch, prom => prom.reflect())).then(() => {
+		totalSize += _.sum(_.map(filesBatch, file => file.filestat.size));
+		batchAt += batchSize;
+		if(batchAt < files.length){
+			setTimeout(runBatch, 1000);
+		}
+	})
 })();
 
 return;
