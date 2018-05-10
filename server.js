@@ -1,5 +1,9 @@
 l = console.log;
 
+const KB = 1000;
+const MB = 1000 * KB;
+const GB = 1000 * MB;
+
 const express 	= require('express');
 const p 		= require('path');
 const app 		= express();
@@ -34,6 +38,66 @@ l('album: ' + albumPath);
 configFile = './config.json';
 config = require(configFile);
 
+
+const guidPath = p.join(drive, "guidTree");
+l("guidPath: " + guidPath);
+
+// ==== Find all files
+let files = [];
+toolbox.traverse({
+	path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
+	onFile : function(file){
+		if(files.length >= 50)
+			return true;
+
+		let size = file.filestat.size;
+		if(500 * KB < size && size < 10 * MB)
+			files.push(file);
+	}
+})
+l("#files : " + files.length);
+
+// Promisify copy
+cpProm = (from, to) => {
+	return new Promise((resolve, reject) => {
+		fs.copy(from,to, err => {
+			if(err) reject(err)
+			else resolve()
+		});
+	});
+}
+
+// ==== Create promises
+let promises = [];
+_.each(files, file => {
+	let fileId = toolbox.getIdFromFilepath(file);
+	let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
+	let newFilepath = p.join(newDir, file.filename);
+	
+	let prom = cpProm(file.filepath, newFilepath);
+	promises.push(prom);
+});
+
+
+const batchSize = 10;
+let batchAt = 0;
+
+(function runBatch(){
+	l(`Running batch [${batchAt}, ${_.min([promises.length, batchAt+batchSize])}]`);
+	
+	let promiseBatch = promises.slice(batchAt, batchAt+batchSize);
+
+
+	batchAt += batchSize;
+	if(batchAt < promises.length){
+		setTimeout(runBatch, 200);
+	}
+
+})();
+
+return;
+
+
 // Init album
 let album = new Album({
 	dir : albumPath,
@@ -44,7 +108,7 @@ let album = new Album({
 // model.MediaItem.remove({}, () => l("Items removed")); return;
 model.MediaItem.find((err, items) => l("Items : " + items.length));
 
-let promises = [];
+// let promises = [];
 
 if(false) {
     let nFiles = 0;
@@ -110,4 +174,4 @@ Promise.all(_.map(promises, p => p.reflect())).then( () => {
 
 }).catch(err => {
     l("error! : "  + err);
-});
+}); 
