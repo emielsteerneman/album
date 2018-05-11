@@ -40,22 +40,60 @@ config = require(configFile);
 
 
 const guidPath = p.join(drive, "guidTree");
+const tooLargePath = p.join(drive, "tooLarge");
+const tooSmallPath = p.join(drive, "tooSmall");
+
 l("guidPath: " + guidPath);
 
+let nTooSmall = 0;
+let tooSmallSize = 0;
+let nTooLarge = 0;
+let tooLargeSize = 0;
+let totalSize = 0;
 // ==== Find all files
+l("Finding all files..")
 let files = [];
 toolbox.traverse({
-	path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
+	// path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
+	// path: p.join(drive, "album"),
+	path: p.join(drive, "guidTree"),
 	onFile : function(file){
-		if(files.length >= 5000)
-			return true;
+		// if(files.length >= 1500)
+			// return true;
 
 		let size = file.filestat.size;
-		if(500 * KB < size && size < 10 * MB)
+		if(75 * KB < size && size < 10 * MB){
 			files.push(file);
+			totalSize += size;
+			if(files.length && files.length % 1000 == 0)
+				l(files.length + " files..")
+		}else 
+		if(10 * MB <= size){
+			// Too large
+			nTooLarge++;
+			tooLargeSize += size;
+			// fs.ensureSymlinkSync(file.filepath, p.join(tooLargePath, file.filename + "_" + Date.now()));
+		}else 
+		if(size <= 75 * KB){
+			// Too small
+			nTooSmall++;
+			tooSmallSize += size;
+			// let fileId = toolbox.getIdFromFilepath(file);
+			// fs.ensureSymlinkSync(file.filepath, p.join(tooSmallPath, fileId.slice(0, 1), file.filename + "_" + Date.now()));
+		}
 	}
 })
-l("#files : " + files.length);
+l(`${files.length} filed found (${(totalSize/GB).toFixed(2)}GB). ${nTooSmall} too small (${(tooSmallSize/GB).toFixed(2)}GB), ${nTooLarge} too large (${(tooLargeSize/GB).toFixed(2)}GB)`);
+
+return;
+// let start, now;
+// let hashes;
+// let nCollisions;
+// start = Date.now();
+// hashes = _.map(files, toolbox.getIdFromFilepathWithStream);
+// now = Date.now();
+// nCollisions = hashes.length - _.uniq(hashes).length;
+// l("New implementation : " + ((now-start)/1000).toFixed(2) + "s, nCollisions : " + nCollisions);
 
 // Promisify copy
 cpProm = (from, to) => {
@@ -67,52 +105,42 @@ cpProm = (from, to) => {
 	});
 }
 
-// ==== Create promises
-// l("Creating promises..");
-// let promises = [];
-// _.each(files, file => {
-// 	let fileId = toolbox.getIdFromFilepath(file);
-// 	let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
-// 	let newFilepath = p.join(newDir, file.filename);
-	
-// 	let prom = cpProm(file.filepath, newFilepath);
-// 	promises.push(prom);
-
-// 	if(promises.length % 100 == 0){
-// 		l("#promises : " + promises.length);
-// 	}
-// });
-// l("#promises : " + promises.length);
 
 // Solving promises in batches
 const batchSize = 100;
 let batchAt = 0;
-let totalSize = 0;
+totalSize = 0;
 
-(function runBatch(){
-	l(`Running batch [${batchAt}, ${_.min([files.length, batchAt+batchSize])}].. Transferred : ${(totalSize/GB).toFixed(2)} GB`);
-	
-	let promisesBatch = [];
-	// Get files for batch
-	let filesBatch = files.slice(batchAt, batchAt+batchSize);
-	// Generate promises
-	_.each(filesBatch, file => {
-		let fileId = toolbox.getIdFromFilepath(file);
-		let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
-		let newFilepath = p.join(newDir, file.filename);
+if(false){
+	(function runBatch(){
+		l(`Running batch [${batchAt}, ${_.min([files.length, batchAt+batchSize])}].. Transferred : ${(totalSize/GB).toFixed(2)} GB`);
 		
-		let prom = cpProm(file.filepath, newFilepath);
-		promisesBatch.push(prom);
-	})
-	// Resolve promises
-	Promise.all(_.map(promisesBatch, prom => prom.reflect())).then(() => {
-		totalSize += _.sum(_.map(filesBatch, file => file.filestat.size));
-		batchAt += batchSize;
-		if(batchAt < files.length){
-			setTimeout(runBatch, 1000);
-		}
-	})
-})();
+		let promisesBatch = [];
+		// Get files for batch
+		let filesBatch = files.slice(batchAt, batchAt+batchSize);
+		// Generate promises
+		_.each(filesBatch, file => {
+			let fileId = toolbox.getIdFromFilepathWithStream(file);
+			let newDir = p.join(guidPath, fileId.slice(0, 2), fileId.slice(2, 4))
+			let newFilepath = p.join(newDir, file.filename);
+			// If file doesn't yet exist
+			if(!fs.existsSync(newFilepath)){
+				let prom = cpProm(file.filepath, newFilepath);
+				promisesBatch.push(prom);
+			}
+		})
+		l("\t" + promisesBatch.length + " Promises generated");
+		// Resolve promises
+		Promise.all(_.map(promisesBatch, prom => prom.reflect())).then(() => {
+			l("\tPromises resolved");
+			totalSize += _.sum(_.map(filesBatch, file => file.filestat.size));
+			batchAt += batchSize;
+			if(batchAt < files.length){
+				setTimeout(runBatch, 1000);
+			}
+		})
+	})();
+}
 
 return;
 
@@ -127,20 +155,8 @@ let album = new Album({
 // model.MediaItem.remove({}, () => l("Items removed")); return;
 model.MediaItem.find((err, items) => l("Items : " + items.length));
 
-// let promises = [];
 
-if(false) {
-    let nFiles = 0;
-    toolbox.traverse({
-        path: p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee"),
-        onFile: args => {
-            if (++nFiles > 1000) return true;
-            promises.push(album.addFile(args.filepath));
-        },
-    });
-}else{
-    l("Not doing that stuff!")
-}
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
