@@ -23,6 +23,7 @@ module.exports = {
 	, mergeFileIntoAlbum
 	, mergeFolder
 	, getIdFromFilepath
+	, getIdFromFilepathWithStream
 	, copyFilesWithRightExtensions
 	, getFileInfo
 };
@@ -38,6 +39,10 @@ function traverse({
 	, shouldCheckExtension = true
 	, relativePath = ""
 }){
+	if(!path)
+		throw Error("No path given to traverse!");
+	
+
 	if(depth === maxDepth)
 		return;
 
@@ -460,6 +465,20 @@ function getIdFromFilepath({filepath, filestat}){
 		return f(filestat);
 	else
 		return f(fs.statSync(filepath));
+}
+
+function getIdFromFilepathWithStream({filepath, filestat}){
+	const bytesToRead = 200000;	
+
+	let fd = fs.openSync(filepath, 'r');
+
+	let buffer = Buffer.alloc(bytesToRead);
+	let bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
+	fs.closeSync(fd);
+
+	let hash = hashFile.sync(buffer.slice(0, bytesRead));
+
+	return hash;
 }
 
 function getDateFromFilepath({filename, filepath, filestat}){
