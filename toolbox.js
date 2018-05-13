@@ -12,6 +12,10 @@ let winston = require('winston');
 winston.add(winston.transports.File, { filename: 'log.txt', timestamp : false, json : false });
 winston.level = 'debug';
 
+const KB = 1000;
+const MB = 1000 * KB;
+const GB = 1000 * MB;
+
 module.exports = {
 	  traverse
 	, listFiles
@@ -22,10 +26,8 @@ module.exports = {
 	, scanExtensions
 	, mergeFileIntoAlbum
 	, mergeFolder
-	, getIdFromFilepath
-	, getIdFromFilepathWithStream
-	, getId2
-	, getId3
+	, getUUID_full
+	, getUUID
 	, copyFilesWithRightExtensions
 	, getFileInfo
 };
@@ -458,7 +460,7 @@ function checkExtension({filename}){
 	return isAllowed;
 }
 
-function getIdFromFilepath({filepath, filestat}){
+function getUUID_full({filepath, filestat}){
 	// console.log("getIdFromFilepath used..");
 	let hash = hashFile.sync(filepath);
 
@@ -470,66 +472,33 @@ function getIdFromFilepath({filepath, filestat}){
 		return f(fs.statSync(filepath));
 }
 
-function getIdFromFilepathWithStream({filepath, filestat}){
-	const bytesToRead = 1000;	
+// function getIdFromFilepathWithStream({filepath, filestat}){
+// 	const bytesToRead = 100 * KB;	
 
-	let fd = fs.openSync(filepath, 'r');
+// 	let fd = fs.openSync(filepath, 'r');
 
-	let buffer = Buffer.alloc(bytesToRead);
-	let bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
-	fs.closeSync(fd);
+// 	let buffer = Buffer.alloc(bytesToRead);
+// 	let bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
+// 	fs.closeSync(fd);
 
-	// l("[getNew] bytesRead: " + bytesRead, buffer.slice(0, 10));
-	let hash = hashFile.sync(buffer.slice(0, bytesRead));
+// 	let hash = hashFile.sync(buffer.slice(0, bytesRead));
 
-	return hash;
-}
+// 	return hash;
+// }
 
-function getId2({filepath, filestat}){
 
-	if(!filestat){
-		filestat = fs.statSync(filepath);
-	}
-
-	const bytesToRead = 1000;	
-
-	let step = 1;
-	if(bytesToRead < filestat.size){
-		step = Math.floor(filestat.size / bytesToRead);
-	}
-
-	let fd = fs.openSync(filepath, 'r');
-
-	let buffer = Buffer.alloc(bytesToRead);
-	let bytesRead = 0;
-
-	if(step == 1){
-		bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
-	}else{
-		for(let i = 0; i < bytesToRead; i++){
-			// l("[getId2]");
-			bytesRead += fs.readSync(fd, buffer, i, 1, i * step);
-		}
-	}
-	fs.closeSync(fd);
-
-	// l("[getId2] Size: " + filestat.size, "  Step: " + step, "  bytesRead: " + bytesRead, buffer.slice(0, 10));
-	let hash = hashFile.sync(buffer.slice(0, bytesRead));
-
-	return hash;	
-}
-
-function getId3({filepath, filestat}){
+function getUUID({filepath, filestat}){
 
 	if(!filestat){
 		filestat = fs.statSync(filepath);
 	}
 
-	const bytesToRead = 1000;	
-	const batchSize = 100;
+	const bytesToRead = 1.69 * KB;	
+	const batchSize = bytesToRead/13;
 
 	let steps = bytesToRead/batchSize;
 	let step = 1;
+	
 	if(bytesToRead < filestat.size){
 		step = Math.floor(filestat.size / steps);
 	}
@@ -539,21 +508,16 @@ function getId3({filepath, filestat}){
 	let buffer = Buffer.alloc(bytesToRead);
 	let bytesRead = 0;
 
-	// l("[getId3] Size: " + filestat.size, "  Step: " + step);
-
 	if(step == 0 || step == 1){
 		bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
 	}else{
 		for(let i = 0; i < steps; i++){
-			// l("[getId3] Reading byte " + (i*step) + " to " + (i*step + batchSize));
 			bytesRead += fs.readSync(fd, buffer, i * batchSize, batchSize, i * step);
 		}
 	}
 	fs.closeSync(fd);
 
-	// l("[getId3] Size: " + filestat.size, "  Step: " + step, "  bytesRead: " + bytesRead, buffer.slice(0, 10));
 	let hash = hashFile.sync(buffer.slice(0, bytesRead));
-
 	return hash;	
 }
 
