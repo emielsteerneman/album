@@ -24,6 +24,8 @@ module.exports = {
 	, mergeFolder
 	, getIdFromFilepath
 	, getIdFromFilepathWithStream
+	, getId2
+	, getId3
 	, copyFilesWithRightExtensions
 	, getFileInfo
 };
@@ -351,7 +353,7 @@ function getFileInfo(filepath){
 	// Get filestat
 	let filestat = fs.statSync(filepath);
 	// Get ID
-	let id = getIdFromFilepath({filepath, filestat});
+	let id = getIdFromFilepathWithStream({filepath, filestat});
 	// Get date
 	let fileDate = getDateFromFilepath({filename, filepath, filestat});
 	// Get relative dir
@@ -457,6 +459,7 @@ function checkExtension({filename}){
 }
 
 function getIdFromFilepath({filepath, filestat}){
+	// console.log("getIdFromFilepath used..");
 	let hash = hashFile.sync(filepath);
 
 	let f = filestat => hash;
@@ -468,7 +471,7 @@ function getIdFromFilepath({filepath, filestat}){
 }
 
 function getIdFromFilepathWithStream({filepath, filestat}){
-	const bytesToRead = 200000;	
+	const bytesToRead = 1000;	
 
 	let fd = fs.openSync(filepath, 'r');
 
@@ -476,9 +479,82 @@ function getIdFromFilepathWithStream({filepath, filestat}){
 	let bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
 	fs.closeSync(fd);
 
+	// l("[getNew] bytesRead: " + bytesRead, buffer.slice(0, 10));
 	let hash = hashFile.sync(buffer.slice(0, bytesRead));
 
 	return hash;
+}
+
+function getId2({filepath, filestat}){
+
+	if(!filestat){
+		filestat = fs.statSync(filepath);
+	}
+
+	const bytesToRead = 1000;	
+
+	let step = 1;
+	if(bytesToRead < filestat.size){
+		step = Math.floor(filestat.size / bytesToRead);
+	}
+
+	let fd = fs.openSync(filepath, 'r');
+
+	let buffer = Buffer.alloc(bytesToRead);
+	let bytesRead = 0;
+
+	if(step == 1){
+		bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
+	}else{
+		for(let i = 0; i < bytesToRead; i++){
+			// l("[getId2]");
+			bytesRead += fs.readSync(fd, buffer, i, 1, i * step);
+		}
+	}
+	fs.closeSync(fd);
+
+	// l("[getId2] Size: " + filestat.size, "  Step: " + step, "  bytesRead: " + bytesRead, buffer.slice(0, 10));
+	let hash = hashFile.sync(buffer.slice(0, bytesRead));
+
+	return hash;	
+}
+
+function getId3({filepath, filestat}){
+
+	if(!filestat){
+		filestat = fs.statSync(filepath);
+	}
+
+	const bytesToRead = 1000;	
+	const batchSize = 100;
+
+	let steps = bytesToRead/batchSize;
+	let step = 1;
+	if(bytesToRead < filestat.size){
+		step = Math.floor(filestat.size / steps);
+	}
+
+	let fd = fs.openSync(filepath, 'r');
+
+	let buffer = Buffer.alloc(bytesToRead);
+	let bytesRead = 0;
+
+	// l("[getId3] Size: " + filestat.size, "  Step: " + step);
+
+	if(step == 0 || step == 1){
+		bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
+	}else{
+		for(let i = 0; i < steps; i++){
+			// l("[getId3] Reading byte " + (i*step) + " to " + (i*step + batchSize));
+			bytesRead += fs.readSync(fd, buffer, i * batchSize, batchSize, i * step);
+		}
+	}
+	fs.closeSync(fd);
+
+	// l("[getId3] Size: " + filestat.size, "  Step: " + step, "  bytesRead: " + bytesRead, buffer.slice(0, 10));
+	let hash = hashFile.sync(buffer.slice(0, bytesRead));
+
+	return hash;	
 }
 
 function getDateFromFilepath({filename, filepath, filestat}){
