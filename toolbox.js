@@ -1,12 +1,12 @@
 let l = console.log
 
-let fs = require('fs-extra');
-let p = require('path');
-let _  = require('lodash');
-let moment = require('moment');
-let question = require('readline-sync').question;
-let hashFile = require('hash-file');
-let jsonfile = require('jsonfile');
+const fs = require('fs-extra');
+const p = require('path');
+const _  = require('lodash');
+const moment = require('moment');
+const question = require('readline-sync').question;
+const hashFile = require('hash-file');
+const jsonfile = require('jsonfile');
 
 let winston = require('winston');
 winston.add(winston.transports.File, { filename: 'log.txt', timestamp : false, json : false });
@@ -19,8 +19,7 @@ const GB = 1000 * MB;
 module.exports = {
 	  traverse
 	, listFiles
-	, indexFiles
-	, relocateFiles
+	, getFilesInDir
 	, getDateFromFilepath
 	, detectAndDeleteDoubleFiles
 	, scanExtensions
@@ -42,6 +41,7 @@ function traverse({
 	, maxDepth = -1
 	, shouldCheckExtension = true
 	, relativePath = ""
+	, config
 }){
 	if(!path)
 		throw Error("No path given to traverse!");
@@ -111,6 +111,52 @@ function traverse({
 	}
 };
 
+function getFilesInDir({
+	  dir
+	, minSize = 0
+	, maxSize = Number.MAX_SAFE_INTEGER
+	, maxFiles= Number.MAX_SAFE_INTEGER
+}){
+
+	let files = [];
+
+	let nTooSmall = 0;
+	let tooSmallSize = 0;
+	let nTooLarge = 0;
+	let tooLargeSize = 0;
+	let totalSize = 0;
+
+	traverse({
+		path: dir,
+		onFile : function(file){
+			
+			if(maxFiles <= files.length)
+				return true;
+
+			let size = file.filestat.size;
+			if(minSize <= size && size <= maxSize){
+				files.push(file);
+				totalSize += size;
+				if(files.length && files.length % 2000 == 0)
+					l(`[getFilesInDir] ${files.length} files..`);
+			}else 
+			if(maxSize < size){
+				// Too large
+				nTooLarge++;
+				tooLargeSize += size;
+			}else 
+			if(size < minSize){
+				// Too small
+				nTooSmall++;
+				tooSmallSize += size;
+			}
+		}
+	})
+	l(`[getFilesInDir] ${files.length} filed found (${(totalSize/GB).toFixed(2)}GB). ${nTooSmall} too small (${(tooSmallSize/GB).toFixed(2)}GB), ${nTooLarge} too large (${(tooLargeSize/GB).toFixed(2)}GB)\n`);
+
+	return files;
+}
+
 function listFiles({
 	  basepath
 	, maxDepth = -1
@@ -150,100 +196,6 @@ function listFiles({
 	l('nFiles: ' + nFiles)
 };
 
-function indexFiles({basePath}){
-	let l = (str) => winston.info('[indexFiles] ' + str)
-
-	l('Indexing all files')
-
-	// Open or create index file
-	let index = {}
-	if(!fs.existsSync(indexFile)){
-		jsonfile.writeFileSync(indexFile, index, {spaces : 4})
-	}else{
-		index = jsonfile.readFileSync(indexFile)	
-	}
-
-	let onFile = ({filename, filepath}) => {
-		let fileId = getIdFromFilepath({filepath})
-
-		// If file already indexed
-		if(typeof index[fileId] !== "undefined"){
-			// l('\tIndexing # ' + filename)
-			return
-		}
-
-		l('\tIndexing ' + filename)
-		index[fileId] = {
-			  filepath : filepath.slice(basePath.length)
-			, filename
-			, deleted : false
-			, favourited : false
-		}
-	}
-
-	let onEnterDir = ({path}) => {
-		l(path)
-	}
-
-	traverse({
-		  path : basePath
-		, onFile
-		, onEnterDir
-	})
-
-	jsonfile.writeFileSync(indexFile, index)
-	l('Files indexed')
-	return index
-}
-
-function relocateFiles({
-	  basepath
-}){
-	l('\n === Relocating files ===')
-	l(basepath)
-
-	let onFile = ({filepath, path, depth, filename, filestat}) => {
-		// Get filepath
-		// let filepath = p.join(path, filename)
-		// Get date of file
-		let fileDate = getDateFromFilepath({filename, filepath, filestat})
-		// Convert date to dir
-		let dir = fileDate ? momentToDir(fileDate) : 'unknown'
-
-		fs.ensureDirSync(p.join(basepath, dir))
-
-		let filepathNew = p.join(basepath, dir, filename)
-		
-		// If file is placed wrong
-		if(filepath !== filepathNew){
-			// let filepathNew = p.join(basepath, dir ? dir : 'unknown', filename)
-
-			l("\n\t1 : " + filepath + "\n\t2 : " + filepathNew)
-			// l(dir.endsWith(path), dir, path)
-
-			// If new location is null
-			if(dir == 'unknown'){
-				// Check if this is correct
-				let input = question("\tMove 1 to 2 ? (y/n)")
-				if(input != 'y'){
-					l('\tNot relocating')
-					return
-				}
-			}
-
-			fs.renameSync(filepath, filepathNew)
-			l("\tRelocated")
-		} 
-	}
-	
-	let onEnterDir = ({path}) => l(path)
-
-	traverse({
-		  path : basepath
-		, onFile
-		, onEnterDir
-	})
-};
 
 function detectAndDeleteDoubleFiles({
 	  basepath
@@ -461,16 +413,9 @@ function checkExtension({filename}){
 }
 
 function getUUID_full({filepath, filestat}){
-	// console.log("getIdFromFilepath used..");
-	let hash = hashFile.sync(filepath);
-
-	let f = filestat => hash;
-
-	if(filestat)
-		return f(filestat);
-	else
-		return f(fs.statSync(filepath));
+	return hashFile.sync(filepath);
 }
+
 
 // function getIdFromFilepathWithStream({filepath, filestat}){
 // 	const bytesToRead = 100 * KB;	
@@ -493,33 +438,54 @@ function getUUID({filepath, filestat}){
 		filestat = fs.statSync(filepath);
 	}
 
-	const bytesToRead = 1.69 * KB;	
-	const batchSize = bytesToRead/13;
+	// Number of chunks to be read
+	const nChunks = 97;
+	// Size of a chunk in bytes
+	const chunkSize = 20;
 
-	let steps = bytesToRead/batchSize;
-	let step = 1;
+	const bytesToRead = nChunks * chunkSize;
+
+	// // Total bytes to be read from the file
+	// const bytesToRead = 1.69 * 10 * KB;	
+	// // Bytes to be read per piece
+	// const batchSize = bytesToRead/13;
+
+	// // Number of pieces to read
+	// let steps = bytesToRead/batchSize;
+	// // Distance between pieces
+	// let step = 1;
 	
+	let stepSize = 0;
 	if(bytesToRead < filestat.size){
-		step = Math.floor(filestat.size / steps);
+		stepSize = Math.floor(filestat.size / nChunks);
 	}
 
+	// Open the file
 	let fd = fs.openSync(filepath, 'r');
-
+	// Allocate a buffer for the bytes that are going to be read
 	let buffer = Buffer.alloc(bytesToRead);
+	// Track the number of bytes read
 	let bytesRead = 0;
 
-	if(step == 0 || step == 1){
+	// If there is no distance between the chunks, read all the bytes at once
+	if(stepSize == 0){
 		bytesRead = fs.readSync(fd, buffer, 0, bytesToRead, 0);
 	}else{
-		for(let i = 0; i < steps; i++){
-			bytesRead += fs.readSync(fd, buffer, i * batchSize, batchSize, i * step);
+		// Read each chunk
+		for(let i = 0; i < nChunks; i++){
+			const locationInBuffer = i * chunkSize;
+			const locationInFile = i * stepSize;
+			bytesRead += fs.readSync(fd, buffer, locationInBuffer, chunkSize, locationInFile);
 		}
 	}
+	// Close the file
 	fs.closeSync(fd);
 
+	// Calculate the hash
 	let hash = hashFile.sync(buffer.slice(0, bytesRead));
 	return hash;	
 }
+
 
 function getDateFromFilepath({filename, filepath, filestat}){
 

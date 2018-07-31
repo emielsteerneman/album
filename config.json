@@ -35,7 +35,8 @@
     ".wav",
     ".☭",
     ".rar",
-    "."
+    ".",
+    ".AVI"
   ],
   "extensionsDenied": [
     ".json",
@@ -401,6 +402,6 @@
     ".bnu--en",
     ".sf--en"
   ],
-  "minSize" : 100000,
-  "maxSize" : 10000000
+  "minSize": 100000,
+  "maxSize": 10000000
 }

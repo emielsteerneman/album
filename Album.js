@@ -50,16 +50,16 @@ class Album {
             let info = toolbox.getFileInfo(filepath);
 
             // Check if file is large enough
-            if(info.filestat.size < this.config.minSize){
-                l("File is too small : " + info.filestat.size);
-                return reject("File too small : " + info.filestat.size);
-            }
+            // if(info.filestat.size < this.config.minSize){
+            //     l("File is too small : " + info.filestat.size);
+            //     return reject("File too small : " + info.filestat.size);
+            // }
 
             // Check if file is small enough
-            if(this.config.maxSize < info.filestat.size){
-                l("File is too large : " + info.filestat.size);
-                return reject("File too large : " + info.filestat.size);
-            }
+            // if(this.config.maxSize < info.filestat.size){
+            //     l("File is too large : " + info.filestat.size);
+            //     return reject("File too large : " + info.filestat.size);
+            // }
 
             // Check if file already in album
             model.MediaItem.findOne({id: info.id}, (err, item) => {
@@ -77,7 +77,7 @@ class Album {
                 l("Item not yet in database");
                 l("Copying..");
                 let filepathNew = p.join(this.dir, info.relativeDir, info.filename);
-                fs.copy(filepath, filepathNew, err => {
+                fs.ensureSymlink(filepath, filepathNew, err => {
                     if (err) {
                         l("Error while copying file to " + filepathNew);
                         l(err);

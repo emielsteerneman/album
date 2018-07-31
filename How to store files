@@ -1,0 +1,55 @@
+How to store files : 
+	Actual real files in a GUID
+	All albums a softlink to the actual files
+
+	max length of filename = 255 characters. Want to store : 0xUUID $ 0xAvgHash $ original filename + ext
+		UUID 	40
+		AVG 	72 (max 146)
+		WIDTH	2
+		HEIGHT	2
+		ORIG 	60
+		EXT 	6
+		
+		$		3
+		_		2
+		====	+
+		Total 	247
+
+
+		total of 2048 bytes. 
+		seperate with dollar signs
+		longest found : 106 in album / 144 in all files
+
+	average hash : 
+		4 bits per color -> 12 bits per block
+		8 * 8 * 1.5 * (4/3) = 64 * 3/2 * 4/3 = 64 * 12/6 = 64 * 2 = 128 ! NICE
+
+		6x8x1.5 = 72
+		4x8x1.5 = 48
+		problem : not every bit represents the same "distance". 0000 and 1000 is further apart than 0000 and 0001
+			possible solution : colour is eighter 1 or 0 
+				=> 3 bits per chunk => 128 chunks => 8 * 16
+
+		problem : hash should be stored as base64, same goes for UUID
+			4 characters needed for 3 bytes
+
+
+
+
+
+
+21810 files found
+Mean length: 23.16767537826685
+Median: 23
+ 95.00% : 25
+ 95.50% : 28
+ 96.00% : 30
+ 96.50% : 30
+ 97.00% : 30
+ 97.50% : 30
+ 98.00% : 30
+ 98.50% : 37
+ 99.00% : 38
+ 99.50% : 48
+100% : 106
+last 50 : 52,52,52,53,53,53,53,53,53,53,53,53,53,53,53,53,53,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,55,55,56,56,68,72,72,77,83,84,91,106
