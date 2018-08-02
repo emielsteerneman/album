@@ -358,9 +358,15 @@ if(false){
     l("Finding all files..")
     let files = toolbox.getFilesInDir({
         dir : p.join(drive, "robocup"),
-        maxFiles : 500,
-        maxSize : 5 * MB
+        // maxFiles : 100,
+        // maxSize : 10 * MB
     });
+    // Filter files on jpg/jpeg
+    
+    l(files.length + " files found"); 
+    files = _.filter(files, ({filename}) => {
+        return filename.toLowerCase().includes('jpg') || filename.toLowerCase().includes('jpeg')
+    })
     l(files.length + " files found"); 
 
     let dir = p.join(drive, "server", "testAvg");
@@ -368,6 +374,7 @@ if(false){
     const batchSize = 10;
     let batchAt = 0;
     totalSize = 0;
+
 
     (function runBatch(){
         l(`Running batch [${batchAt}, ${_.min([files.length, batchAt+batchSize])}].. Transferred : ${(totalSize/GB).toFixed(2)} GB`);
@@ -379,14 +386,18 @@ if(false){
         // === Generate promises
         _.each(filesBatch, ({filename, filepath}) => {
 
-            if(!filename.toLowerCase().includes('jpg') && !filename.toLowerCase().includes('jpeg'))
-                return;
-
             let prom = averageHash.filepathToPixels({filepath});
             prom.then(hash => {
                 let filepathNew = p.join(dir, hash + "$" + filename);
-                fs.copyFileSync(filepath, filepathNew);
-                l(`${filename} processed : ${hash}`);
+                
+                fs.ensureSymlink(filepath, filepathNew, err => {
+                    if (err) {
+                        l("Error while copying file to " + filepathNew);
+                        l(err);
+                    }
+                    l(`${filename} processed : ${hash}`);
+                })
+                
             }).catch(err => {
                 l(`error : ${err}`);
             });
@@ -434,18 +445,19 @@ if(true){
     })
 
     // Create clusters
-    let threshold = 200;
+    let threshold = 150;
 
     // === First of, create small clusters
     let clusters = []
-    _.each(distanceses, ([filename, distances]) => {
+    _.each(distanceses, ([filename, distances], i) => {
+
         let _d = _.filter(distances, ([d, fn]) => d < threshold);
         if(_d.length){
             _d.push([0, filename]);
             clusters.push(_.map(_d, '1'));
         }
     })
-    l(clusters)
+    // l(clusters)
 
     let again = false;
     do {
@@ -458,7 +470,7 @@ if(true){
                 if(!intersection.length)
                     continue;
 
-                l(`  Intersection found between ${i} and ${j}: ${intersection}`);
+                // l(`  Intersection found between ${i} and ${j}: ${intersection}`);
                 again = true;
 
                 // Add entire J cluster to I
@@ -472,8 +484,12 @@ if(true){
         }
     }while(again);
 
-    l(clusters);
+    clusters = _.sortBy(clusters, c => c.length);
 
+    _.each(clusters, cluster => {
+        l("\nCluster length : " + cluster.length);
+        l("xdg-open " + cluster.join(" && xdg-open "));
+    })
 }
 
 // lengths of filenames
