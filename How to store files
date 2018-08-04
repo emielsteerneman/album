@@ -4,7 +4,7 @@ How to store files :
 
 	max length of filename = 255 characters. Want to store : 0xUUID $ 0xAvgHash $ original filename + ext
 		UUID 	40
-		AVG 	72 (max 146)
+		AVG 	128
 		WIDTH	2
 		HEIGHT	2
 		ORIG 	60
@@ -13,7 +13,7 @@ How to store files :
 		$		3
 		_		2
 		====	+
-		Total 	247
+		Total 	243
 
 
 		total of 2048 bytes. 

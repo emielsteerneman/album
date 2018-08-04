@@ -22,7 +22,7 @@ let toolbox     = require('./toolbox');
 let misc        = require('./misc');
 
 module.exports = {
-	filepathToPixels,
+	getFingerprint,
 	hashToImage,
 	distanceBetweenHashes
 }
@@ -56,8 +56,8 @@ class Filename {
 }
 
 /* Warning : Only works nice with bitsPerColor=4 atm */ 
-function filepathToPixels({filepath, log = false}){
-	let l = (...args) => console.log("[filepathToPixels]", ...args);
+function getFingerprint({filepath, log = false}){
+	let l = (...args) => console.log("[getFingerprint]", ...args);
 
 	const chunksInRow  = 8; // Number of chunks in row
 	const chunksInCol  = 8; // Number of chunks in column
@@ -65,11 +65,22 @@ function filepathToPixels({filepath, log = false}){
 
 	return new Promise((resolve, reject) => {
 
+		// Does not support : mp4, m4a, mp3, webm, ai, rar
+
+		// if(filepath.includes('mp4') || filepath.includes('m4a') || filepath.includes('mp3') || filepath.includes('webm')){
+		// 	return resolve('');
+		// }
+
 		// Get the pixels of the image
 		getPixels(filepath, function(err, pixels){
 			
 			// If an error occured, reject
-			if(err) return reject(err);
+			if(err){
+				return resolve('');
+				
+				// l(`Error on file ${filepath} : ${err}`);
+				// return reject(err);
+			}
 
 			let [width, height, channels] = pixels.shape;	// Width and height of image in pixels, number of channels in image
 

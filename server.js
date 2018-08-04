@@ -64,7 +64,6 @@ config = require(configFile);
 const guidPath = p.join(drive, "guidTree");
 const tooLargePath = p.join(drive, "tooLarge");
 const tooSmallPath = p.join(drive, "tooSmall");
-
 const robocupPath = p.join(drive, "robocup");
 
 l("guidPath: " + guidPath);
@@ -312,8 +311,6 @@ if(false){
     })();
 }
 
-
-
 // Copy all files to guidTree
 if(false){
 
@@ -418,7 +415,7 @@ if(false){
 }
 
 // Test distance between hashes
-if(true){
+if(false){
     l("Finding all files..")
     let files = toolbox.getFilesInDir({
         dir : p.join(drive, "server", "testAvg"),
@@ -516,7 +513,6 @@ if(false){
 
 }
 
-
 // Test performance difference between getUUID implementations
 if(false){
 
@@ -565,17 +561,16 @@ if(false){
     }
 }
 
-return;
-
 let tree = new UUIDTree({
-	dir : guidPath,
+	// dir : "/home/emiel/Desktop/hugeassalbum",
+    dir : "/media/emiel/External2TB/tooSmall",
 	config
 });
 
 tree.mergeDirectory({
 	// dir : p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee")
 	// dir : guidPath
-	dir : p.join(drive, "album")
+    dir : p.join("/media/emiel/External2TB/album")
 }).then(() => {
 	l("Complete!");
 })

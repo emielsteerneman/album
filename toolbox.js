@@ -46,7 +46,6 @@ function traverse({
 	if(!path)
 		throw Error("No path given to traverse!");
 	
-
 	if(depth === maxDepth)
 		return;
 
