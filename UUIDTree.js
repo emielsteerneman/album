@@ -73,12 +73,12 @@ class UUIDTree {
 			// Get all the files in the directory
 			let files = toolbox.getFilesInDir({
 			      dir
-				, maxSize : 75 * KB - 1
+				// , maxSize : 75 * KB - 1
 				// , maxSize : 100 * MB
 				// , maxFiles : 3000
 			});
 
-			const batchSize = 10;
+			const batchSize = 50;
 			let batchAt = 0;
 			let totalSize = 0;
 			let totalPromises = 0;
@@ -99,12 +99,30 @@ class UUIDTree {
 
 						totalprocessed++;
 
-						// if(file.filename.toLowerCase().includes('jpg') || file.filename.toLowerCase().includes('jpeg') || file.filename.toLowerCase().includes('png') || file.filename.toLowerCase().includes('gif')){
-						// 	return resolve();
-						// }
-
 						// Get fileId
 						const fileId = toolbox.getUUID(file);
+						// Get file directory
+						const newDir = p.join(myDir, fileId.slice(0, 2), fileId.slice(2, 4))
+
+						// Check if folder already exists
+						if(fs.existsSync(newDir)){
+							// Get all files in folder
+							let filesInFolder = fs.readdirSync(newDir);
+							// Get all hashes in folder
+							let hashes = _.map(filesInFolder, file => {
+								return file.split("$")[0];
+							})
+							// l("hashes in folder:");
+							l(hashes);
+							// Check if hash is in folder
+							if(hashes.includes(fileId)){
+								totaldups++;
+								// l("already in folder: " + fileId);
+								l(`-Duplicate : ${file.filepath} => ${fileId}`);
+								return resolve();
+							}
+						}
+
 						// Get fingerprint
 						averageHash.getFingerprint(file).then(fingerprint => {
 
@@ -118,16 +136,15 @@ class UUIDTree {
 								newFilename = `${fileId}$${fingerprint}$${file.filename.slice(len)}`;
 							}
 							
-							l(newFilename);
-							
-							let newDir = p.join(myDir, fileId.slice(0, 2), fileId.slice(2, 4))
+							// l(newFilename);
+					
 							let newFilepath = p.join(newDir, newFilename);
 
 							// If file doesn't yet exist
 							if(!fs.existsSync(newFilepath)){
 								// Copy file to location
 								cpProm(file.filepath, newFilepath).then(() => {
-									l(`-Copied ${file.filename} to ${newFilename}`);
+									l(` Copied ${file.filename} to ${newFilename}`);
 									totalcopied++;
 									return resolve();
 								}).catch(err => {
@@ -168,17 +185,23 @@ class UUIDTree {
 				console.log();
 				
 				// Resolve promises
-				Promise.all(/*_.map(promisesBatch, prom => prom.reflect())*/promisesBatch).then(() => {
+				Promise.all(_.map(promisesBatch, prom => prom.reflect())).then(() => {
 					l("Promises resolved");
 					totalSize += _.sum(_.map(filesBatch, file => file.filestat.size));
 					batchAt += batchSize;
 					if(batchAt < files.length){
 						l({totalprocessed, totalcopied, totaldups, totalweird});
 						console.log();
-						setTimeout(runBatch, 500);
+						setTimeout(runBatch, 50);
 					}else{
 						l("All promises resolved for a total of " + totalPromises +  " promises!");
 						l({totalprocessed, totalcopied, totaldups, totalweird});
+
+						let logstr = JSON.stringify({totalprocessed, totalcopied, totaldups, totalweird, totalFiles : files.length});
+						l(logstr);
+						let logpath = p.join(dir, "log.txt");
+						fs.writeFileSync(logpath, logstr);
+
 						outerResolve();
 					}
 				}).catch(err => {

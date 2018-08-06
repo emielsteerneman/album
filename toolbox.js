@@ -301,23 +301,34 @@ function scanExtensions({basepath}){
 }
 
 function getFileInfo(filepath){
-	// Get filename
-	let filename = p.basename(filepath);
-	// Get filestat
-	let filestat = fs.statSync(filepath);
-	// Get ID
-	let id = getIdFromFilepathWithStream({filepath, filestat});
-	// Get date
-	let fileDate = getDateFromFilepath({filename, filepath, filestat});
-	// Get relative dir
-	let relativeDir = fileDate ? momentToDir(fileDate) : 'unknown';
+	let file = {};
 
-	return {
-		id,
-		filename,
-		relativeDir,
-		filestat
+	// Get filename
+	file.filename = p.basename(filepath);
+	// Get filestat
+	file.filestat = fs.statSync(filepath);
+	
+	// Check if name has UUID$FINGERPRINT$FILENAME 
+	const regex = /^([0-9a-f]+)\$(?:(\d+)_(\d+)_([a-zA-Z0-9=+]+)\$)?(.*?)$/;
+	const match = file.filename.match(regex);
+	
+	if(match){
+		let [fullmatch, id, fingerprintWidth, fingerprintHeight, fingerprint, filename_original] = match;
+    	let keyValue = {id, fingerprintWidth, fingerprintHeight, fingerprint, filename_original};
+    	_.each(keyValue, (v, k) => {if(v) file[k] = v});
+		
+	}else{
+		// Get ID
+		file.id = getUUID(file);
 	}
+    
+
+	// Get date
+	file.fileDate = getDateFromFilepath(file);
+	// Get relative dir
+	file.relativeDir = file.fileDate ? momentToDir(file.fileDate) : 'unknown';
+
+	return file;
 }
 
 function mergeFileIntoAlbum({filename, filepath}){

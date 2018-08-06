@@ -561,19 +561,71 @@ if(false){
     }
 }
 
+// Count amount of duplicates
+if(false){
+    l("Counting number of duplicate files")
+    let files = toolbox.getFilesInDir({dir : "/home/emiel/Desktop/hugeassalbum"});
+    let hashes = _.map(files, file => file.filename.split("$")[0]);
+    let uniques = _.uniq(hashes);
+    l(`Hashes : ${hashes.length}, uniques : ${uniques.length}, duplicates : ${hashes.length - uniques.length}`);
+}
+
+if(true){
+    let files = toolbox.getFilesInDir({dir : "/home/emiel/Desktop/hugeassalbum", maxFiles : 3});
+    // _.each(files, file => l("\n\n", file))
+    _.each(files, file => l(toolbox.getFileInfo(file.filepath)));
+
+
+    // let file = "000442a8e4f1f5b8d3f147e80840ac02eb1679bd$8_8_AAVUiIiHiIZmMzIiAAVVmYiIiIh3h3MyAAVViIiIiIiIiHMyEQVVmYqqmZqpiIMyAAREiImZmZqqmYMyAAIhd3mYiIiHd2IiAAAAEQRDZld3d2IiAAAAAAEQEQEQEQAA$IMG_20160509_232917.jpg";
+    // let file2= "000442a8e4f1f5b8d3f147e80840ac02eb1679bd$IMG_20160509_232917.jpg";
+    // let file3= "IMG_20160509_232917.jpg";
+
+
+
+    // console.log(); 
+
+    // let regex = /^([0-9a-f]+)\$(?:(\d+)_(\d+)_([a-zA-Z0-9=+]+)\$)?(.*?)$/;
+    
+
+    // let match = file.match(regex);
+    // let [fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original] = match;
+    // l({fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original});
+
+    // l();
+    
+    // match = file2.match(regex);
+    // [fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original] = match;
+    // l({fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original});
+    
+    // // let werew = {fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original};
+    // // let x = {};
+    // // _.each(werew, (v, k) => {if(v) x[k] = v});
+    // // l(x);
+
+    // match = file3.match(regex);
+    // if(!match)
+    //     l("fail");
+    // [fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original] = match;
+    // l({fullmatch, hash, fpWidth, fpHeight, fingerprint, filename_original});
+    
+
+
+}
+return;
+
 let tree = new UUIDTree({
-	// dir : "/home/emiel/Desktop/hugeassalbum",
-    dir : "/media/emiel/External2TB/tooSmall",
+	dir : "/home/emiel/Desktop/hugeassalbum",
+    // dir : "/media/emiel/External2TB/tooSmall",
 	config
 });
 
 tree.mergeDirectory({
 	// dir : p.join(drive, "albumPhoneTest", "media", "emiel", "HDD", "phooonnneee")
 	// dir : guidPath
-    dir : p.join("/media/emiel/External2TB/album")
+    dir : p.join("/media/emiel/External2TB/werl")
 }).then(() => {
-	l("Complete!");
-})
+	l("Complete!")
+;})
 
 
 return;
