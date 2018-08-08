@@ -497,8 +497,10 @@ function getUUID({filepath, filestat}){
 }
 
 
-function getDateFromFilepath({filename, filepath, filestat}){
-
+function getDateFromFilepath({filename, filename_original, filepath, filestat}){
+	l(filename);
+	filename = filename_original || filename;
+	l(filename);
 	let dateRegex = {
 		  regex : /(?:[^\d]|^)(20[01]\d[01]\d[0-3]\d)(?:[^\d])/	// 20160109
 		, f : (matches) => {

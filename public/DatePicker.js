@@ -37,7 +37,7 @@ Vue.component('datepicker', {
             this.$forceUpdate();
         },
         dayClicked(day){
-            this.emitDate(this.currentDate.date(day));S
+            this.emitDate(this.currentDate.date(day));
             this.$forceUpdate();
         },
 

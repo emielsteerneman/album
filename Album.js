@@ -17,6 +17,7 @@ class Album {
         dir,
         config
     }){
+        dir = p.resolve(dir);
         l("New album : " + dir);
         this.dir = dir;
         this.config = config;
