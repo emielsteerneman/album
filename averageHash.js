@@ -24,7 +24,8 @@ let misc        = require('./misc');
 module.exports = {
 	getFingerprint,
 	hashToImage,
-	distanceBetweenHashes
+	distanceBetweenHashes,
+	createNetwork
 }
 
 // pad number
@@ -227,6 +228,7 @@ function hashToImage(b64String, filepath){
 function hashToRgb(hash){
 	hash = hash.replace(/=/g, '/');
 
+	// Strip off fingerprint size \d+_\d+_ if needed
 	if(hash.includes('_')){
 		hash = _.last(hash.split('_'));
 	}
@@ -251,17 +253,153 @@ function hashToRgb(hash){
 }
 
 function distanceBetweenHashes(hash1, hash2){
-	let arr1 = hashToRgb(hash1);
-	let arr2 = hashToRgb(hash2);
+	let rgb1 = hashToRgb(hash1);
+	let rgb2 = hashToRgb(hash2);
 
+	return distanceBetweenRGBs(rgb1, rgb2);
+}
+
+function distanceBetweenRGBs(rgb1, rgb2){
 	let distance = 0;
 
 	// Assumes both arrays have the same length
-	let len = arr1.length
-	
+	let len = rgb1.length
+	// For each RGB values in the array
 	for(i = 0; i < len; i++){
-		distance += Math.abs( (arr1[i]>>4) -  (arr2[i]>>4));
+		// Calculate the distance to the RGB value in the other array
+		distance += Math.abs( (rgb1[i]>>4) -  (rgb2[i]>>4));
 	}
 
 	return distance;
+}
+
+class Node {
+	constructor(file, id){
+		let l = (...args) => console.log(`[Node ${id}]`, ...args);
+		this.id = id;
+
+		l("New node : ", file.fingerprint, file.filename_original);
+		this.file = file;
+		this.rgb = hashToRgb(this.file.fingerprint);
+
+		this.connections = [];
+		this.visited = false;
+	}
+
+	// TODO : check for duplicates
+	addConnection(node){
+		this.connections.push(node);
+	}
+}
+
+function createNetwork(dir){
+	const thresh = 100;
+
+	let l = (...args) => console.log('[createNetwork]', ...args);
+	dir = p.resolve(dir);
+	l(`directory: ${dir}`);
+
+	// Get all the files in the directory
+	// Filter out all files without fingerprints
+	// Create a node for each file
+	// Iterate over each node and check if other node is within distance
+	// Create clusters
+	// Store clusters in different folders
+
+
+	// Get all the files in the directory
+	l("Finding all files..")
+    let files = toolbox.getFilesInDir({ dir });
+    l(files.length + " files found"); 
+    
+    // Filter out all files without fingerprints
+    files = _.filter(files, ({filename}) => filename.split("$").length == 3);
+    l(files.length + " files found with hashes");
+    
+    // TEMP less files
+    // files = files.slice(0, 10000);
+
+    // Create a node for each file
+    let nodes = _.map(files, (file, i) => {
+    	l("\n\n" + i + " : " + file.filepath);
+    	return new Node(toolbox.getFileInfo(file.filepath), i);
+    });
+
+    // Iterate over each node and check if other node is within distance
+    for(let node1 = 0; node1 < nodes.length; node1++){
+    	l(`At node ${node1}`);
+
+    	for(let node2 = node1 + 1; node2 < nodes.length; node2++){
+    		let n1 = nodes[node1];
+    		let n2 = nodes[node2];
+
+    		let distance = distanceBetweenRGBs(n1.rgb, n2.rgb);
+    		if(distance < thresh){
+    			l(`    Added connection from ${n1.file.filename_original} to ${n2.file.filename_original}`)
+    			n1.addConnection(n2);
+    			n2.addConnection(n1);
+    		}
+    	}
+    }
+
+    // Create clusters
+    l("\n\nCreating clusters...");	
+    // Reset each node to not visited
+    let clusters = [];
+    
+    _.each(nodes, node => {
+    	if(node.visited || !node.connections.length)
+    		return
+
+    	l("At node " + node.id + " : Connections : " + node.connections.length);
+
+    	// let currentCluster = [];
+
+    	scourNode = node => {
+    		l(`  [scourNode ${node.id}] Scouring node ${node.id}`)
+    		node.visited = true;
+    		let c = [];
+    		_.each(node.connections, conn => {
+    			if(conn.visited)
+    				return;
+    			
+    			conn.visited = true;
+    			
+    			l(`    [scourNode ${node.id}] Added node ${conn.id}`);
+    			c.push(conn);
+    			
+    			c = _.concat(c, scourNode(conn));
+    		})
+
+    		return c;
+    	}
+
+    	let newCluster = _.concat([node], scourNode(node));
+    	if(newCluster.length > 3){
+    		clusters.push(newCluster);
+    	}
+
+    })
+
+    l('Number of clusters : ' + clusters.length);
+    _.each(clusters, cluster => {
+    	l(`    ${cluster.length}`);
+    })
+
+
+    let outputdir = p.resolve("/home/emiel/Desktop/hugeassclusters");
+    _.each(clusters, (cluster, i) => {
+    	let dirname = "cluster_" + cluster.length + "_" + i;
+    	let dirpath = p.join(outputdir, dirname);
+    	if(!fs.ensureDirSync(dirpath)){
+    		return l(`Error while creating ${dirpath}`);
+    	}
+
+    	_.each(cluster, node => {
+    		let filepathNew = p.join(dirpath, node.file.filename);
+    		fs.ensureSymlinkSync(node.file.filepath, filepathNew);
+    	})
+    });
+
+    l('Clusters written');
 }

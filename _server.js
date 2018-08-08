@@ -416,6 +416,10 @@ if(false){
 
 // Test distance between hashes
 if(true){
+    
+    averageHash.createNetwork("/home/emiel/Desktop/hugeassalbum");
+    return;
+
     l("Finding all files..")
     let files = toolbox.getFilesInDir({
         dir : p.resolve("/home/emiel/Desktop/hugeassalbum"),
@@ -428,9 +432,16 @@ if(true){
     let filenames = _.map(files, ({filename}) => filename.split('$'));
 
 
-    let distanceses = []
-    _.each(filenames, ([fHash, fFingerprint, fFilename]) => {
+    let distanceses = [];
+    let iAt = 0;
+    _.each(filenames, ([fHash, fFingerprint, fFilename], i) => {
         
+        if(i <= iAt)
+            return;
+
+        iAt = i;
+        l("at " + iAt);
+
         // Calculate distances to file
         let distances = _.map(filenames, ([hash, fingerprint, filename]) => {
             let distance = averageHash.distanceBetweenHashes(fFingerprint, fingerprint);
@@ -450,6 +461,7 @@ if(true){
 
     // === First of, create small clusters
     let clusters = []
+    
     _.each(distanceses, ([filename, distances], i) => {
 
         let _d = _.filter(distances, ([d, fn]) => d < threshold);

@@ -303,6 +303,8 @@ function scanExtensions({basepath}){
 function getFileInfo(filepath){
 	let file = {};
 
+	// Set filepath
+	file.filepath = filepath;
 	// Get filename
 	file.filename = p.basename(filepath);
 	// Get filestat
@@ -498,9 +500,9 @@ function getUUID({filepath, filestat}){
 
 
 function getDateFromFilepath({filename, filename_original, filepath, filestat}){
-	l(filename);
+	
 	filename = filename_original || filename;
-	l(filename);
+	
 	let dateRegex = {
 		  regex : /(?:[^\d]|^)(20[01]\d[01]\d[0-3]\d)(?:[^\d])/	// 20160109
 		, f : (matches) => {
@@ -544,6 +546,7 @@ function getDateFromFilepath({filename, filename_original, filepath, filestat}){
 	if(matchesFiltered.length === 0){
 
 		let exifdate = null;
+		// l("Reading EXIF data for " + filepath);
 		let data = fs.readFileSync(filepath);
 		try{
 			let parser = require('exif-parser').create(data);
